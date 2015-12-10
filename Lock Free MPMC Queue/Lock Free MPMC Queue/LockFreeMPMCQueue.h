@@ -6,6 +6,8 @@
 template <typename T, typename index_t = size_t> class LockFreeMPMCQueue
 {
     public:
+	typedef T Value;
+
 	explicit LockFreeMPMCQueue(size_t size)
 	    : m_data(new T[size]), m_size(size), m_head_1(std::numeric_limits<index_t>::max() - 3),
 	      m_head_2(std::numeric_limits<index_t>::max() - 3), m_tail_1(std::numeric_limits<index_t>::max() - 3),

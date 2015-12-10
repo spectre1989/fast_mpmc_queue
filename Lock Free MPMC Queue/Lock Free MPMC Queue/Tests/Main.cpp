@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <thread>
 
-#include "LockFreeMPMCQueue.h"
+#include "../LockFreeMPMCQueue.h"
 #include "MutexQueue.h"
 
 struct PaddedValue
@@ -15,7 +15,7 @@ struct PaddedValue
 	PaddedValue(size_t value) : value(value) {}
 };
 
-template <typename Queue> void test(const size_t num_threads, char* memory, const size_t num_values, Queue& queue)
+template <typename Queue> std::chrono::microseconds::rep test(const size_t num_threads, char* memory, const size_t num_values, Queue& queue)
 {
 	memset(memory, 0, sizeof(char) * num_values);
 
@@ -32,11 +32,11 @@ template <typename Queue> void test(const size_t num_threads, char* memory, cons
 						{
 							for (size_t x = 0; x < num_values_per_thread; ++x)
 							{
-								PaddedValue value;
+								Queue::Value value;
 								while (!queue.try_dequeue(value))
 								{
 								}
-								memory[value.value] = 1;
+								memory[value] = 1;
 							}
 						});
 	}
@@ -63,8 +63,6 @@ template <typename Queue> void test(const size_t num_threads, char* memory, cons
 	}
 
 	auto time_taken = std::chrono::high_resolution_clock::now() - start;
-	printf("%d;%d;%d;%lld\n", num_threads, num_values, queue.capacity(),
-	       std::chrono::duration_cast<std::chrono::microseconds>(time_taken).count());
 
 	delete[] reader_threads;
 	delete[] writer_threads;
@@ -83,6 +81,13 @@ template <typename Queue> void test(const size_t num_threads, char* memory, cons
 	{
 		printf("FAIL!\n");
 	}
+
+	return std::chrono::duration_cast<std::chrono::microseconds>(time_taken).count();
+}
+
+template <typename Queue> void test_batch(const size_t num_threads_max, const size_t num_values, const size_t queue_size, const size_t num_samples, char* memory)
+{
+	Queue queue(queue_size);
 }
 
 // TODO
@@ -100,13 +105,14 @@ int main(int argc, char* argv[])
 	char* memory = new char[num_values];
 
 	{
-		// Do avg of each bunch of samples, have test() return the time taken
 		MutexQueue<PaddedValue, std::uint32_t> queue(queue_size);
+		double inv_num_samples = 1.0 / (double)num_samples;
+		double avg_time_taken = 0.0;
 		for (size_t num_threads = 1; num_threads <= num_threads_max; num_threads *= 2)
 		{
 			for (size_t i = 0; i < num_samples; ++i)
 			{
-				test(num_threads, memory, num_values, queue);
+				avg_time_taken += test(num_threads, memory, num_values, queue) * inv_num_samples;
 			}
 		}
 	}
