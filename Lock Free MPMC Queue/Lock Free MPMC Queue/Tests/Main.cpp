@@ -85,9 +85,25 @@ template <typename Queue> std::chrono::microseconds::rep test(const size_t num_t
 	return std::chrono::duration_cast<std::chrono::microseconds>(time_taken).count();
 }
 
-template <typename Queue> void test_batch(const size_t num_threads_max, const size_t num_values, const size_t queue_size, const size_t num_samples, char* memory)
+template <typename Queue> std::vector<std::pair<size_t, std::vector<double>> test_batch(const size_t num_threads_max, const size_t num_values, const size_t queue_size, const size_t num_samples, char* memory)
 {
+	std::vector<std::pair<size_t, std::vector<double>> results;
+
 	Queue queue(queue_size);
+
+	for(size_t num_threads = 1; num_threads <= num_threads_max; num_threads *= 2)
+	{
+		std::vector<double> samples(num_samples);
+
+		for(size_t i = 0; i < num_samples; ++i)
+		{
+			samples.push_back(test(num_threads, memory, num_values, queue));
+		}
+
+		results.push_back(std::make_pair(num_threads, std::move(samples)));
+	}
+
+	return results;
 }
 
 // TODO
