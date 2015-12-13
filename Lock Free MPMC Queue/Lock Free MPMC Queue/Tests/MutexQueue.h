@@ -5,7 +5,8 @@
 
 template <typename T, typename index_t = size_t> class MutexQueue
 {
-    public:
+public:
+    
 	explicit MutexQueue(size_t size) : m_data(new T[size]), m_size(size), m_head(0), m_tail(0) {}
 
 	virtual ~MutexQueue() { delete m_data; }

@@ -1,6 +1,7 @@
 #include <chrono>
 #include <cstdint>
 #include <thread>
+#include <vector>
 
 #include "../LockFreeMPMCQueue.h"
 #include "MutexQueue.h"
@@ -13,9 +14,11 @@ struct PaddedValue
 	PaddedValue() : value(0) {}
 
 	PaddedValue(size_t value) : value(value) {}
+    
+    operator size_t() const { return value; }
 };
 
-template <typename Queue> std::chrono::microseconds::rep test(const size_t num_threads, char* memory, const size_t num_values, Queue& queue)
+template <typename Value, typename Queue> std::chrono::microseconds::rep test(const size_t num_threads, char* memory, const size_t num_values, Queue& queue)
 {
 	memset(memory, 0, sizeof(char) * num_values);
 
@@ -32,7 +35,7 @@ template <typename Queue> std::chrono::microseconds::rep test(const size_t num_t
 						{
 							for (size_t x = 0; x < num_values_per_thread; ++x)
 							{
-								Queue::Value value;
+								Value value;
 								while (!queue.try_dequeue(value))
 								{
 								}
@@ -85,9 +88,9 @@ template <typename Queue> std::chrono::microseconds::rep test(const size_t num_t
 	return std::chrono::duration_cast<std::chrono::microseconds>(time_taken).count();
 }
 
-template <typename Queue> std::vector<std::pair<size_t, std::vector<double>> test_batch(const size_t num_threads_max, const size_t num_values, const size_t queue_size, const size_t num_samples, char* memory)
+template <typename Queue> std::vector<std::pair<size_t, std::vector<double>>> test_batch(const size_t num_threads_max, const size_t num_values, const size_t queue_size, const size_t num_samples, char* memory)
 {
-	std::vector<std::pair<size_t, std::vector<double>> results;
+	std::vector<std::pair<size_t, std::vector<double>>> results;
 
 	Queue queue(queue_size);
 
@@ -128,7 +131,7 @@ int main(int argc, char* argv[])
 		{
 			for (size_t i = 0; i < num_samples; ++i)
 			{
-				avg_time_taken += test(num_threads, memory, num_values, queue) * inv_num_samples;
+				avg_time_taken += test<PaddedValue>(num_threads, memory, num_values, queue) * inv_num_samples;
 			}
 		}
 	}
@@ -138,7 +141,7 @@ int main(int argc, char* argv[])
 		{
 			for (size_t i = 0; i < num_samples; ++i)
 			{
-				test(num_threads, memory, num_values, queue);
+				test<PaddedValue>(num_threads, memory, num_values, queue);
 			}
 		}
 	}
