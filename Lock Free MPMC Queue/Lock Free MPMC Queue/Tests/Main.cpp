@@ -88,15 +88,15 @@ template <typename Value, typename Queue> std::chrono::microseconds::rep test(co
 	return std::chrono::duration_cast<std::chrono::microseconds>(time_taken).count();
 }
 
-template <typename Queue> std::vector<std::pair<size_t, std::vector<double>>> test_batch(const size_t num_threads_max, const size_t num_values, const size_t queue_size, const size_t num_samples, char* memory)
+template <typename Queue> std::vector<std::pair<size_t, std::vector<std::chrono::microseconds::rep>>> test_batch(const size_t num_threads_max, const size_t num_values, const size_t queue_size, const size_t num_samples, char* memory)
 {
-	std::vector<std::pair<size_t, std::vector<double>>> results;
+	std::vector<std::pair<size_t, std::vector<std::chrono::microseconds::rep>>> results;
 
 	Queue queue(queue_size);
 
 	for(size_t num_threads = 1; num_threads <= num_threads_max; num_threads *= 2)
 	{
-		std::vector<double> samples(num_samples);
+		std::vector<std::chrono::microseconds::rep> samples(num_samples);
 
 		for(size_t i = 0; i < num_samples; ++i)
 		{
@@ -123,32 +123,33 @@ int main(int argc, char* argv[])
 
 	char* memory = new char[num_values];
 
-	{
-		MutexQueue<PaddedValue, std::uint32_t> queue(queue_size);
-		double inv_num_samples = 1.0 / (double)num_samples;
-		double avg_time_taken = 0.0;
-		for (size_t num_threads = 1; num_threads <= num_threads_max; num_threads *= 2)
-		{
-			for (size_t i = 0; i < num_samples; ++i)
-			{
-				avg_time_taken += test<PaddedValue>(num_threads, memory, num_values, queue) * inv_num_samples;
-			}
-		}
-	}
-	{
-		LockFreeMPMCQueue<PaddedValue, std::uint32_t> queue(queue_size);
-		for (size_t num_threads = 1; num_threads <= num_threads_max; num_threads *= 2)
-		{
-			for (size_t i = 0; i < num_samples; ++i)
-			{
-				test<PaddedValue>(num_threads, memory, num_values, queue);
-			}
-		}
-	}
-
-	printf("Done!\n");
+	std::vector<std::pair<size_t, std::vector<std::chrono::microseconds::rep>>> lock_free_queue_results		= test_batch<LockFreeMPMCQueue<PaddedValue, std::uint32_t>>(num_threads_max, num_values, queue_size, num_samples, memory);
+	std::vector<std::pair<size_t, std::vector<std::chrono::microseconds::rep>>> mutex_queue_results			= test_batch<MutexQueue<PaddedValue, std::uint32_t>>(num_threads_max, num_values, queue_size, num_samples, memory);
 
 	delete[] memory;
+
+	printf("queue_size = %d, num_values = %d", queue_size, num_values);
+	printf("num_threads;LockFreeMPMCQueue;MutexQueue\n");
+
+	for(size_t i = 0; i < lock_free_queue_results.size(); ++i)
+	{
+		const std::pair<size_t, std::vector<std::chrono::microseconds::rep>>& lock_free_samples		= lock_free_queue_results[i];
+		const std::pair<size_t, std::vector<std::chrono::microseconds::rep>>& mutex_queue_samples	= mutex_queue_results[i];
+
+		if(lock_free_samples.first != mutex_queue_samples.first)
+		{
+			printf("num_threads mismatch!");
+			char c;
+			scanf("%c", &c);
+		}
+
+		const size_t num_threads = lock_free_samples.first;
+
+		for(size_t j = 0; j < lock_free_samples.second.size(); ++j)
+		{
+			printf("%d;%f;%f\n", num_threads, lock_free_samples.second[j], mutex_queue_samples.second[j]);
+		}
+	}
 
 	char c;
 	scanf("%c", &c);
