@@ -36,8 +36,13 @@ template <template<typename, typename> class Queue, typename Value, typename Ind
 							for (size_t x = 0; x < num_values_per_thread; ++x)
 							{
 								Value value;
+                                int tries = 0;
 								while (!queue.try_dequeue(value))
 								{
+                                    if(++tries > 5)
+                                    {
+                                        std::this_thread::yield();
+                                    }
 								}
 								memory[value] = 1;
 							}
@@ -52,8 +57,13 @@ template <template<typename, typename> class Queue, typename Value, typename Ind
 							for (size_t x = 0; x < num_values_per_thread; ++x)
 							{
 								const size_t value = offset + x;
+                                int tries = 0;
 								while (!queue.try_enqueue(value))
 								{
+                                    if(++tries > 5)
+                                    {
+                                        std::this_thread::yield();
+                                    }
 								}
 							}
 						});
@@ -85,7 +95,7 @@ template <template<typename, typename> class Queue, typename Value, typename Ind
 		printf("FAIL!\n");
 	}
 
-	return std::chrono::duration_cast<std::chrono::milliseconds>(time_taken).count();
+	return std::chrono::duration_cast<std::chrono::microseconds>(time_taken).count();
 }
 
 template <class Queue>
@@ -100,7 +110,7 @@ std::vector<double> test_batch(const size_t num_threads_max, const size_t num_va
     {
         for (size_t i = 0; i < num_samples; ++i)
         {
-            avg_time_taken += test(num_threads, memory, num_values, queue) * inv_num_samples;
+            avg_time_taken += double(test(num_threads, memory, num_values, queue)) * 0.001 * inv_num_samples;
         }
         
         results.push_back(avg_time_taken);
@@ -115,10 +125,10 @@ std::vector<double> test_batch(const size_t num_threads_max, const size_t num_va
 
 int main(int argc, char* argv[])
 {
-	const size_t num_threads_max = 16;
-    const size_t num_values = 1 << 9;//1 << 12;
+	const size_t num_threads_max = 32;
+    const size_t num_values = 1 << 13;
 	const size_t queue_size = 32;
-    const size_t num_samples = 10;//128;
+    const size_t num_samples = 2;//128;
 
     std::vector<double> results[2];
     
@@ -156,7 +166,8 @@ int main(int argc, char* argv[])
     printf("hAxis: {title: 'Threads'},\n");
     printf("vAxis: {title: 'Avg Time Taken (milliseconds)'},\n");
     printf("series: {1: {curveType: 'function'}},\n");
-    printf("height: 800\n");
+    printf("height: 800,\n");
+    printf("pointsVisible: true\n");
     printf("};\n");
     printf("var chart = new google.visualization.LineChart(document.getElementById('chart_div'));\n");
     printf("chart.draw(data, options);\n");
