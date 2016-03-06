@@ -6,15 +6,12 @@
 template <typename T, typename index_t = size_t> class LockFreeMPMCQueue
 {
     public:
-
 	explicit LockFreeMPMCQueue(size_t size)
-	    : m_data(new T[size]), m_size(size), m_head_1(std::numeric_limits<index_t>::max() - 3),
-	      m_head_2(std::numeric_limits<index_t>::max() - 3), m_tail_1(std::numeric_limits<index_t>::max() - 3),
-	      m_tail_2(std::numeric_limits<index_t>::max() - 3)
+	    : m_data(new T[size]), m_size(size), m_head_1(0), m_head_2(0), m_tail_1(0), m_tail_2(0)
 	{
 	}
 
-	virtual ~LockFreeMPMCQueue() { delete m_data; }
+	virtual ~LockFreeMPMCQueue() { delete[] m_data; }
 
 	bool try_enqueue(const T& value)
 	{
