@@ -102,6 +102,7 @@ template <class Queue>
 std::vector<double> test_batch(const size_t num_threads_max, const size_t num_values, const size_t queue_size,
 			       const size_t num_samples, char* memory)
 {
+<<<<<<< HEAD
 	std::vector<double> results;
 	Queue queue(queue_size);
 	double inv_num_samples = 1.0 / double(num_samples);
@@ -119,6 +120,25 @@ std::vector<double> test_batch(const size_t num_threads_max, const size_t num_va
 	}
 
 	return results;
+=======
+    std::vector<double> results;
+    Queue queue(queue_size);
+    double inv_num_samples = 1.0 / double(num_samples);
+    
+    for (size_t num_threads = 1; num_threads <= num_threads_max; num_threads *= 2)
+    {
+		double avg_time_taken = 0.0;
+		
+        for (size_t i = 0; i < num_samples; ++i)
+        {
+            avg_time_taken += test(num_threads, memory, num_values, queue) * inv_num_samples;
+        }
+        
+        results.push_back(avg_time_taken);
+    }
+    
+    return results;
+>>>>>>> master
 }
 
 // TODO
