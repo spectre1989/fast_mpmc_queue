@@ -19,7 +19,7 @@ struct PaddedValue
 };
 
 template <template <typename, typename> class Queue, typename Value, typename IndexType>
-std::chrono::microseconds::rep test(const size_t num_threads, char* memory, const size_t num_values,
+std::chrono::milliseconds::rep test(const size_t num_threads, char* memory, const size_t num_values,
 				    Queue<Value, IndexType>& queue)
 {
 	memset(memory, 0, sizeof(char) * num_values);
@@ -37,13 +37,9 @@ std::chrono::microseconds::rep test(const size_t num_threads, char* memory, cons
 			for (size_t x = 0; x < num_values_per_thread; ++x)
 			{
 				Value value;
-				int tries = 0;
 				while (!queue.try_dequeue(value))
 				{
-					if (++tries > 5)
-					{
-						std::this_thread::yield();
-					}
+					std::this_thread::yield();
 				}
 				memory[value] = 1;
 			}
@@ -57,13 +53,9 @@ std::chrono::microseconds::rep test(const size_t num_threads, char* memory, cons
 			for (size_t x = 0; x < num_values_per_thread; ++x)
 			{
 				const size_t value = offset + x;
-				int tries = 0;
 				while (!queue.try_enqueue(value))
 				{
-					if (++tries > 5)
-					{
-						std::this_thread::yield();
-					}
+					std::this_thread::yield();
 				}
 			}
 		});
@@ -95,66 +87,43 @@ std::chrono::microseconds::rep test(const size_t num_threads, char* memory, cons
 		printf("FAIL!\n");
 	}
 
-	return std::chrono::duration_cast<std::chrono::microseconds>(time_taken).count();
+	return std::chrono::duration_cast<std::chrono::milliseconds>(time_taken).count();
 }
 
 template <class Queue>
 std::vector<double> test_batch(const size_t num_threads_max, const size_t num_values, const size_t queue_size,
 			       const size_t num_samples, char* memory)
 {
-<<<<<<< HEAD
 	std::vector<double> results;
 	Queue queue(queue_size);
 	double inv_num_samples = 1.0 / double(num_samples);
-	double avg_time_taken = 0.0;
 
 	for (size_t num_threads = 1; num_threads <= num_threads_max; num_threads *= 2)
 	{
+		double avg_time_taken = 0.0;
+
 		for (size_t i = 0; i < num_samples; ++i)
 		{
-			avg_time_taken +=
-			    double(test(num_threads, memory, num_values, queue)) * 0.001 * inv_num_samples;
+			avg_time_taken += test(num_threads, memory, num_values, queue) * inv_num_samples;
 		}
 
 		results.push_back(avg_time_taken);
 	}
 
 	return results;
-=======
-    std::vector<double> results;
-    Queue queue(queue_size);
-    double inv_num_samples = 1.0 / double(num_samples);
-    
-    for (size_t num_threads = 1; num_threads <= num_threads_max; num_threads *= 2)
-    {
-		double avg_time_taken = 0.0;
-		
-        for (size_t i = 0; i < num_samples; ++i)
-        {
-            avg_time_taken += test(num_threads, memory, num_values, queue) * inv_num_samples;
-        }
-        
-        results.push_back(avg_time_taken);
-    }
-    
-    return results;
->>>>>>> master
 }
 
 // TODO
-// mutex queue which allows simultaneous read/write
 // deal with index wrap around
-// try on iPhone
-// try in release mode
 // fences
 // compare performance with padded values/indexes
 
 int main(int argc, char* argv[])
 {
 	const size_t num_threads_max = 32;
-	const size_t num_values = 1 << 13;
+	const size_t num_values = 1 << 12;
 	const size_t queue_size = 128;
-	const size_t num_samples = 32;
+	const size_t num_samples = 16;
 
 	std::vector<double> results[2];
 
