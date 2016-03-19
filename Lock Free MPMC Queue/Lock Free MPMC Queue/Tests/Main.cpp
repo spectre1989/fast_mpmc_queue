@@ -104,9 +104,9 @@ std::vector<double> test_batch( const size_t num_threads_max, const size_t num_v
 void benchmark_comparison( void )
 {
 	const size_t num_threads_max = 32;
-	const size_t num_values = 1 << 12;
+	const size_t num_values = 1 << 13;
 	const size_t queue_size = 8;
-	const size_t num_samples = 128;
+	const size_t num_samples = 64;
 
 	std::vector<double> results[2];
 
@@ -189,9 +189,6 @@ void stress_test( void )
 
 	delete[] memory;
 }
-
-// TODO
-// are 64 bit rmw operations atomic on x86?
 
 int main( int argc, char* argv[] )
 {
