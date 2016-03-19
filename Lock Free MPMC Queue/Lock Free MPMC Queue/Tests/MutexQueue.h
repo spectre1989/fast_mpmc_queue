@@ -6,17 +6,17 @@
 template <typename T, typename index_t = size_t> class MutexQueue
 {
     public:
-	explicit MutexQueue(size_t size) : m_data(new T[size]), m_size(size), m_head(0), m_tail(0) {}
+	explicit MutexQueue( size_t size ) : m_data( new T[size] ), m_size( size ), m_head( 0 ), m_tail( 0 ) {}
 
 	virtual ~MutexQueue() { delete[] m_data; }
 
-	bool try_enqueue(const T& value)
+	bool try_enqueue( const T& value )
 	{
 		m_mutex.lock();
 
 		const size_t count = m_tail - m_head;
 
-		if (count == m_size)
+		if( count == m_size )
 		{
 			m_mutex.unlock();
 			return false;
@@ -29,11 +29,11 @@ template <typename T, typename index_t = size_t> class MutexQueue
 		return true;
 	}
 
-	bool try_dequeue(T& out)
+	bool try_dequeue( T& out )
 	{
 		m_mutex.lock();
 
-		if (m_head == m_tail)
+		if( m_head == m_tail )
 		{
 			m_mutex.unlock();
 			return false;
@@ -51,8 +51,11 @@ template <typename T, typename index_t = size_t> class MutexQueue
     private:
 	T* m_data;
 	size_t m_size;
+	char pad1[64];
 	index_t m_head;
+	char pad2[64];
 	index_t m_tail;
+	char pad3[64];
 	std::mutex m_mutex;
 };
 
