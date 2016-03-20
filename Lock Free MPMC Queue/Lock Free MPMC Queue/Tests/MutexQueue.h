@@ -1,9 +1,10 @@
 #ifndef __MUTEXQUEUE_H__
 #define __MUTEXQUEUE_H__
 
+#include <cstdint>
 #include <mutex>
 
-template <typename T, typename index_t = size_t> class MutexQueue
+template <typename T> class MutexQueue
 {
     public:
 	explicit MutexQueue( size_t size ) : m_data( new T[size] ), m_size( size ), m_head( 0 ), m_tail( 0 ) {}
@@ -51,12 +52,11 @@ template <typename T, typename index_t = size_t> class MutexQueue
     private:
 	T* m_data;
 	size_t m_size;
-	char pad1[64];
-	index_t m_head;
-	char pad2[64];
-	index_t m_tail;
-	char pad3[64];
 	std::mutex m_mutex;
+	char pad1[60];
+	std::uint64_t m_head;
+	char pad2[60];
+	std::uint64_t m_tail;
 };
 
 #endif

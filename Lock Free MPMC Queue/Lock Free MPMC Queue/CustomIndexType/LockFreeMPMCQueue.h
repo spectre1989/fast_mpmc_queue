@@ -1,9 +1,8 @@
 #pragma once
 
 #include <atomic>
-#include <cstdint>
 
-template <typename T> class LockFreeMPMCQueue
+template <typename T, typename index_t = size_t> class LockFreeMPMCQueue
 {
     public:
 	explicit LockFreeMPMCQueue( size_t size )
@@ -13,18 +12,13 @@ template <typename T> class LockFreeMPMCQueue
 
 	virtual ~LockFreeMPMCQueue() { delete[] m_data; }
 
-	// non-copyable
-	LockFreeMPMCQueue( const LockFreeMPMCQueue<T>& ) = delete;
-	LockFreeMPMCQueue( const LockFreeMPMCQueue<T>&& ) = delete;
-	LockFreeMPMCQueue<T>& operator=( const LockFreeMPMCQueue<T>& ) = delete;
-	LockFreeMPMCQueue<T>& operator=( const LockFreeMPMCQueue<T>&& ) = delete;
-
 	bool try_enqueue( const T& value )
 	{
-		const std::uint64_t head = m_head_2.load( std::memory_order_relaxed );
-		std::uint64_t tail = m_tail_1.load( std::memory_order_relaxed );
+		index_t tail = m_tail_1.load( std::memory_order_relaxed );
+		const index_t head = m_head_2.load( std::memory_order_relaxed );
 
-		const std::uint64_t count = tail - head;
+		const index_t count =
+		    tail > head ? tail - head : ( std::numeric_limits<index_t>::max() - head ) + tail + 1;
 
 		// count could be greater than size if between the reading of head, and the reading of tail, both head
 		// and tail have been advanced
@@ -33,8 +27,10 @@ template <typename T> class LockFreeMPMCQueue
 			return false;
 		}
 
+		const index_t next_tail = tail < std::numeric_limits<index_t>::max() ? tail + 1 : 0;
+
 		if( !std::atomic_compare_exchange_strong_explicit(
-			&m_tail_1, &tail, tail + 1, std::memory_order_relaxed, std::memory_order_relaxed ) )
+			&m_tail_1, &tail, next_tail, std::memory_order_relaxed, std::memory_order_relaxed ) )
 		{
 			return false;
 		}
@@ -57,16 +53,23 @@ template <typename T> class LockFreeMPMCQueue
 
 	bool try_dequeue( T& out )
 	{
-		const std::uint64_t tail = m_tail_2.load( std::memory_order_relaxed );
-		std::uint64_t head = m_head_1.load( std::memory_order_relaxed );
+		// Order matters here, because we're testing for emptiness with head==tail
+		// Could test with head >= tail, but if index_t is < 64bits then this will have
+		// issues when tail has wrapped around to 0
+		index_t head = m_head_1.load( std::memory_order_relaxed );
+		// Acquire - read before can't be reordered with read/write after
+		std::atomic_thread_fence( std::memory_order_acquire );
+		const index_t tail = m_tail_2.load( std::memory_order_relaxed );
 
-		if( head >= tail )
+		if( head == tail )
 		{
 			return false;
 		}
 
+		const index_t next_head = head < std::numeric_limits<index_t>::max() ? head + 1 : 0;
+
 		if( !std::atomic_compare_exchange_strong_explicit(
-			&m_head_1, &head, head + 1, std::memory_order_relaxed, std::memory_order_relaxed ) )
+			&m_head_1, &head, next_head, std::memory_order_relaxed, std::memory_order_relaxed ) )
 		{
 			return false;
 		}
@@ -92,14 +95,12 @@ template <typename T> class LockFreeMPMCQueue
     private:
 	T* m_data;
 	size_t m_size;
-
-	// Make sure each index is on its own cache line
-	char pad1[60];
-	std::atomic<std::uint64_t> m_head_1;
-	char pad2[60];
-	std::atomic<std::uint64_t> m_head_2;
-	char pad3[60];
-	std::atomic<std::uint64_t> m_tail_1;
-	char pad4[60];
-	std::atomic<std::uint64_t> m_tail_2;
+	char pad1[64];
+	std::atomic<index_t> m_head_1;
+	char pad2[64];
+	std::atomic<index_t> m_head_2;
+	char pad3[64];
+	std::atomic<index_t> m_tail_1;
+	char pad4[64];
+	std::atomic<index_t> m_tail_2;
 };

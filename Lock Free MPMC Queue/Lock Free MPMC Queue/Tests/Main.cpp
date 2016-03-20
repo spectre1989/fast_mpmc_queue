@@ -6,9 +6,9 @@
 #include "../LockFreeMPMCQueue.h"
 #include "MutexQueue.h"
 
-template <template <typename, typename> class Queue, typename Value, typename IndexType>
+template <template <typename> class Queue, typename Value>
 std::chrono::milliseconds::rep test( const size_t num_threads, char* memory, const size_t num_values,
-				     Queue<Value, IndexType>& queue )
+				     Queue<Value>& queue )
 {
 	memset( memory, 0, sizeof( char ) * num_values );
 
@@ -112,10 +112,9 @@ void benchmark_comparison( void )
 
 	char* memory = new char[num_values];
 
-	results[0] = test_batch<LockFreeMPMCQueue<size_t, std::uint32_t>>( num_threads_max, num_values, queue_size,
-									   num_samples, memory );
-	results[1] = test_batch<MutexQueue<size_t, std::uint32_t>>( num_threads_max, num_values, queue_size,
-								    num_samples, memory );
+	results[0] =
+	    test_batch<LockFreeMPMCQueue<size_t>>( num_threads_max, num_values, queue_size, num_samples, memory );
+	results[1] = test_batch<MutexQueue<size_t>>( num_threads_max, num_values, queue_size, num_samples, memory );
 
 	printf( "<html>\n" );
 	printf( "<head>\n" );
@@ -171,7 +170,7 @@ void stress_test( void )
 
 	char* memory = new char[num_values];
 
-	LockFreeMPMCQueue<size_t, std::uint32_t> queue( queue_size );
+	LockFreeMPMCQueue<size_t> queue( queue_size );
 
 	size_t stage = 0; // give progress update every 10%
 	for( int i = 0; i < num_tests; ++i )
@@ -192,7 +191,7 @@ void stress_test( void )
 
 int main( int argc, char* argv[] )
 {
-	benchmark_comparison();
+	stress_test();
 
 	char c;
 	scanf( "%c", &c );
