@@ -3,7 +3,7 @@
 #include <atomic>
 #include <cstdint>
 
-template <typename T> class LockFreeMPMCQueue
+template <typename T, size_t cache_line_size = 64> class LockFreeMPMCQueue
 {
     public:
 	explicit LockFreeMPMCQueue( size_t size )
@@ -33,8 +33,7 @@ template <typename T> class LockFreeMPMCQueue
 			return false;
 		}
 
-		if( !std::atomic_compare_exchange_strong_explicit(
-			&m_tail_1, &tail, tail + 1, std::memory_order_relaxed, std::memory_order_relaxed ) )
+		if( !m_tail_1.compare_exchange_strong( tail, tail + 1, std::memory_order_relaxed ) )
 		{
 			return false;
 		}
@@ -65,12 +64,15 @@ template <typename T> class LockFreeMPMCQueue
 			return false;
 		}
 
-		if( !std::atomic_compare_exchange_strong_explicit(
-			&m_head_1, &head, head + 1, std::memory_order_relaxed, std::memory_order_relaxed ) )
+		if( !m_head_1.compare_exchange_strong( head, head + 1, std::memory_order_relaxed ) )
 		{
 			return false;
 		}
 
+		// Acquire - read/write after can't be reordered with reads before
+		// Make sure this read of m_data[head] is not reordered with the load
+		// of m_tail_2
+		std::atomic_thread_fence( std::memory_order_acquire );
 		out = m_data[head % m_size];
 
 		while( m_head_2.load( std::memory_order_relaxed ) != head )
@@ -94,12 +96,12 @@ template <typename T> class LockFreeMPMCQueue
 	size_t m_size;
 
 	// Make sure each index is on its own cache line
-	char pad1[60];
+	char _pad1[cache_line_size - 8];
 	std::atomic<std::uint64_t> m_head_1;
-	char pad2[60];
+	char _pad2[cache_line_size - 8];
 	std::atomic<std::uint64_t> m_head_2;
-	char pad3[60];
+	char _pad3[cache_line_size - 8];
 	std::atomic<std::uint64_t> m_tail_1;
-	char pad4[60];
+	char _pad4[cache_line_size - 8];
 	std::atomic<std::uint64_t> m_tail_2;
 };

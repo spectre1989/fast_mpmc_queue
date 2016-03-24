@@ -1,3 +1,5 @@
+// THIS FILE IS NOT MAINTAINED AND MAY NOT CONTAIN ALL FIXES IN ../LockFreeMPMPCQueue.h
+
 #pragma once
 
 #include <atomic>
@@ -74,6 +76,7 @@ template <typename T, typename index_t = size_t> class LockFreeMPMCQueue
 			return false;
 		}
 
+		std::atomic_thread_fence( std::memory_order_acquire );
 		out = m_data[head % m_size];
 
 		while( m_head_2.load( std::memory_order_relaxed ) != head )

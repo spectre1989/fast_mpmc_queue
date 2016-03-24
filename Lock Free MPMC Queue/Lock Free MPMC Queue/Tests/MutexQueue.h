@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <mutex>
 
-template <typename T> class MutexQueue
+template <typename T, size_t cache_line_size = 64> class MutexQueue
 {
     public:
 	explicit MutexQueue( size_t size ) : m_data( new T[size] ), m_size( size ), m_head( 0 ), m_tail( 0 ) {}
@@ -53,9 +53,10 @@ template <typename T> class MutexQueue
 	T* m_data;
 	size_t m_size;
 	std::mutex m_mutex;
-	char pad1[60];
+
+	char _pad1[cache_line_size - 8];
 	std::uint64_t m_head;
-	char pad2[60];
+	char _pad2[cache_line_size - 8];
 	std::uint64_t m_tail;
 };
 

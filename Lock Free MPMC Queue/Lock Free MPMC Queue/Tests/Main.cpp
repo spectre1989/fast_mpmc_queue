@@ -6,9 +6,9 @@
 #include "../LockFreeMPMCQueue.h"
 #include "MutexQueue.h"
 
-template <template <typename> class Queue, typename Value>
+template <template <typename, size_t> class Queue, typename Value, size_t cache_line_size>
 std::chrono::milliseconds::rep test( const size_t num_threads, char* memory, const size_t num_values,
-				     Queue<Value>& queue )
+				     Queue<Value, cache_line_size>& queue )
 {
 	memset( memory, 0, sizeof( char ) * num_values );
 
@@ -181,7 +181,7 @@ void stress_test( void )
 		if( stage != new_stage )
 		{
 			stage = new_stage;
-			printf( "%lu%%\n", ( stage * 10 ) );
+			printf( "%zu%%\n", ( stage * 10 ) );
 		}
 	}
 	printf( "done\n" );
