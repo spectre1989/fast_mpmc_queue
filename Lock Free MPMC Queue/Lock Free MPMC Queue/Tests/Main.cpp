@@ -3,8 +3,10 @@
 #include <thread>
 #include <vector>
 
-#include "../LockFreeMPMCQueue.h"
+#include "../MPMCQueue.h"
 #include "MutexQueue.h"
+
+// this is a horrible mess :(
 
 template <template <typename, size_t> class Queue, typename Value, size_t cache_line_size>
 std::chrono::milliseconds::rep test( const size_t num_threads, char* memory, const size_t num_values,
@@ -105,15 +107,15 @@ void benchmark_comparison( void )
 {
 	const size_t num_threads_max = 32;
 	const size_t num_values = 1 << 13;
-	const size_t queue_size = 8;
+	const size_t queue_size = 128;
 	const size_t num_samples = 64;
 
-	std::vector<double> results[2];
+	std::vector<double> results[3];
 
 	char* memory = new char[num_values];
 
 	results[0] =
-	    test_batch<LockFreeMPMCQueue<size_t>>( num_threads_max, num_values, queue_size, num_samples, memory );
+	    test_batch<MPMCQueue<size_t>>( num_threads_max, num_values, queue_size, num_samples, memory );
 	results[1] = test_batch<MutexQueue<size_t>>( num_threads_max, num_values, queue_size, num_samples, memory );
 
 	printf( "<html>\n" );
@@ -126,7 +128,7 @@ void benchmark_comparison( void )
 	printf( "function drawChart() {\n" );
 	printf( "var data = new google.visualization.DataTable();\n" );
 	printf( "data.addColumn('number', 'X');\n" );
-	printf( "data.addColumn('number', 'LockFreeMPMCQueue');\n" );
+	printf( "data.addColumn('number', 'MPMCQueue');\n" );
 	printf( "data.addColumn('number', 'MutexQueue');\n" );
 	printf( "data.addRows([\n" );
 
@@ -170,7 +172,7 @@ void stress_test( void )
 
 	char* memory = new char[num_values];
 
-	LockFreeMPMCQueue<size_t> queue( queue_size );
+	MPMCQueue<size_t> queue( queue_size );
 
 	size_t stage = 0; // give progress update every 10%
 	for( int i = 0; i < num_tests; ++i )
@@ -191,7 +193,8 @@ void stress_test( void )
 
 int main( int argc, char* argv[] )
 {
-	stress_test();
+	//stress_test();
+	benchmark_comparison();
 
 	char c;
 	scanf( "%c", &c );
