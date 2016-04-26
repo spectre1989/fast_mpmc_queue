@@ -196,8 +196,5 @@ int main( int argc, char* argv[] )
 	//stress_test();
 	benchmark_comparison();
 
-	char c;
-	scanf( "%c", &c );
-
 	return 0;
 }

@@ -7,23 +7,28 @@
 template <typename T, size_t cache_line_size = 64> class MutexQueue
 {
     public:
-	explicit MutexQueue( size_t size ) : m_data( new T[size] ), m_size( size ), m_head( 0 ), m_tail( 0 ) {}
+	explicit MutexQueue( size_t capacity ) 
+		: m_items( static_cast<Item*>( _aligned_malloc( sizeof( Item ) * capacity, cache_line_size ) ) )
+		, m_capacity( capacity )
+		, m_head( 0 )
+		, m_tail( 0 ) 
+	{}
 
-	virtual ~MutexQueue() { delete[] m_data; }
+	virtual ~MutexQueue() { _aligned_free( m_items ); }
 
 	bool try_enqueue( const T& value )
 	{
 		m_mutex.lock();
 
-		const size_t count = m_tail - m_head;
+		const uint64_t count = m_tail - m_head;
 
-		if( count == m_size )
+		if( count == m_capacity )
 		{
 			m_mutex.unlock();
 			return false;
 		}
 
-		m_data[m_tail % m_size] = value;
+		m_items[m_tail % m_capacity].value = value;
 		++m_tail;
 
 		m_mutex.unlock();
@@ -40,24 +45,33 @@ template <typename T, size_t cache_line_size = 64> class MutexQueue
 			return false;
 		}
 
-		out = m_data[m_head % m_size];
+		out = m_items[m_head % m_capacity].value;
 		++m_head;
 
 		m_mutex.unlock();
 		return true;
 	}
 
-	size_t capacity() const { return m_size; }
+	size_t capacity() const { return m_capacity; }
 
     private:
-	T* m_data;
-	size_t m_size;
+	struct alignas(cache_line_size)Item
+	{
+		std::atomic<uint64_t> version;
+		T value;
+	};
+
+	struct alignas(cache_line_size)AlignedAtomicU64 : public std::atomic<uint64_t>
+	{
+		using std::atomic<uint64_t>::atomic;
+	};
+
+	Item* m_items;
+	size_t m_capacity;
 	std::mutex m_mutex;
 
-	char _pad1[cache_line_size - 8];
-	std::uint64_t m_head;
-	char _pad2[cache_line_size - 8];
-	std::uint64_t m_tail;
+	AlignedAtomicU64 m_head;
+	AlignedAtomicU64 m_tail;
 };
 
 #endif
