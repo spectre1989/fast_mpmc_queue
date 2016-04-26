@@ -110,7 +110,7 @@ void benchmark_comparison( void )
 	const size_t queue_size = 128;
 	const size_t num_samples = 64;
 
-	std::vector<double> results[3];
+	std::vector<double> results[2];
 
 	char* memory = new char[num_values];
 
