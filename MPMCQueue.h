@@ -43,8 +43,8 @@ public:
 		m_items[tail % m_capacity].value = value;
 
 		// Release operation, all reads/writes before this store cannot be reordered past it
-		// Writing version to tail + capacity - 1 signals reader threads when to read payload
-		m_items[tail % m_capacity].version.store( tail + m_capacity - 1, std::memory_order_release );
+		// Writing version to tail + 1 signals reader threads when to read payload
+		m_items[tail % m_capacity].version.store( tail + 1, std::memory_order_release );
 
 		return true;
 	}
@@ -55,7 +55,7 @@ public:
 
 		// Acquire here makes sure read of m_data[head].value is not reordered before this
 		// Also makes sure side effects in try_enqueue are visible here
-		if( m_items[head % m_capacity].version.load( std::memory_order_acquire ) != (head + m_capacity - 1) )
+		if( m_items[head % m_capacity].version.load( std::memory_order_acquire ) != (head + 1) )
 		{
 			return false;
 		}
